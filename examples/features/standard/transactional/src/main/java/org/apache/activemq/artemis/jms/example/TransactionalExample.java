@@ -23,7 +23,8 @@ import javax.jms.MessageProducer;
 import javax.jms.Queue;
 import javax.jms.Session;
 import javax.jms.TextMessage;
-import javax.naming.InitialContext;
+//import javax.naming.InitialContext;
+import org.apache.qpid.jms.JmsConnectionFactory;
 
 /**
  * A simple JMS example that sends and consume message transactionally.
@@ -32,16 +33,16 @@ public class TransactionalExample {
 
    public static void main(final String[] args) throws Exception {
       Connection connection = null;
-      InitialContext initialContext = null;
+      //InitialContext initialContext = null;
       try {
          // Step 1. Create an initial context to perform the JNDI lookup.
-         initialContext = new InitialContext();
+         //initialContext = new InitialContext();
 
          // Step 2. Look-up the JMS topic
-         Queue queue = (Queue) initialContext.lookup("queue/exampleQueue");
+         //Queue queue = (Queue) initialContext.lookup("queue/exampleQueue");
 
          // Step 3. Look-up the JMS connection factory
-         ConnectionFactory cf = (ConnectionFactory) initialContext.lookup("ConnectionFactory");
+         ConnectionFactory cf = new JmsConnectionFactory("amqp://ic1rh:5672");
 
          // Step 4. Create a JMS connection
          connection = cf.createConnection();
@@ -52,6 +53,8 @@ public class TransactionalExample {
          // Step 6. Create a transactional JMS session
          Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
 
+         Queue queue = session.createQueue("abc.LB.1.testQueue");
+
          // Step 7. Create a JMS message producer
          MessageProducer messageProducer = session.createProducer(queue);
 
@@ -60,14 +63,16 @@ public class TransactionalExample {
 
          // Step 9. Create 2 text messages
          TextMessage message1 = session.createTextMessage("This is a text message1");
+         message1.setIntProperty("MESSAGE_NUMBER", 1);
          TextMessage message2 = session.createTextMessage("This is a text message2");
+         message1.setIntProperty("MESSAGE_NUMBER", 2);
 
          // Step 10. Send the text messages to the queue
          messageProducer.send(message1);
          messageProducer.send(message2);
 
-         System.out.println("Sent message: " + message1.getText());
-         System.out.println("Sent message: " + message2.getText());
+         System.out.println("Sent message1: " + message1.getText());
+         System.out.println("Sent message2: " + message2.getText());
 
          // Step 11. Receive the message, it will return null as the transaction is not committed.
          TextMessage receivedMessage = (TextMessage) messageConsumer.receive(5000);
@@ -79,6 +84,7 @@ public class TransactionalExample {
 
          // Step 13. Receive the messages again
          receivedMessage = (TextMessage) messageConsumer.receive(5000);
+         //TextMessage receivedMessage = (TextMessage) messageConsumer.receive(5000);
 
          System.out.println("Message received after send commit: " + receivedMessage.getText());
 
@@ -88,11 +94,23 @@ public class TransactionalExample {
          // Step 15. Receive the message again, we will get two messages
          receivedMessage = (TextMessage) messageConsumer.receive(5000);
 
-         System.out.println("Message1 received after receive rollback: " + receivedMessage.getText());
+         if (receivedMessage != null) {
+            System.out.println("Message1 received after receive rollback: " + receivedMessage.getText());
+         }
+         else
+         {
+            System.out.println("Message1 received after receive rollback: " + receivedMessage);
+         }
 
          receivedMessage = (TextMessage) messageConsumer.receive(5000);
 
-         System.out.println("Message2 received after receive rollback: " + receivedMessage.getText());
+         if (receivedMessage != null) {
+            System.out.println("Message2 received after receive rollback: " + receivedMessage.getText());
+         }
+         else
+         {
+            System.out.println("Message2 received after receive rollback: " + receivedMessage);
+         }
 
          receivedMessage = (TextMessage) messageConsumer.receive(5000);
 
@@ -116,10 +134,10 @@ public class TransactionalExample {
             // Step 18. Be sure to close our JMS resources!
             connection.close();
          }
-         if (initialContext != null) {
-            // Step 19. Also close initial context!
-            initialContext.close();
-         }
+//         if (initialContext != null) {
+//            // Step 19. Also close initial context!
+//            initialContext.close();
+//         }
       }
    }
 }
