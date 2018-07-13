@@ -66,7 +66,9 @@ public class Run extends LockAbstract {
       super.execute(context);
 
       ManagementContextDTO managementDTO = getManagementDTO();
-      managementContext = ManagementFactory.create(managementDTO);
+      if (null != managementDTO.getAuthorisation()) {
+         managementContext = ManagementFactory.create(managementDTO);
+      }
 
       Artemis.printBanner();
 
@@ -78,7 +80,9 @@ public class Run extends LockAbstract {
 
       server = BrokerFactory.createServer(broker.server, security);
 
-      managementContext.start();
+      if (null != managementContext) {
+         managementContext.start();
+      }
       server.start();
 
       if (broker.web != null) {
